@@ -1,107 +1,122 @@
-// GANTI DENGAN DATA DARI PROJECT SUPABASE-MU
 const SUPABASE_URL = 'https://tyipijrsdnbsowltcptl.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_3vXZOMGldH_os9xeq1bVwQ_mHNyLPMq';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5aXBpanJzZG5ic293bHRjcHRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNTQ0MzgsImV4cCI6MjA5MTgzMDQzOH0.o2EhTzvkQYJIGzDOURfUKn5d9mqbhIK5Op_atJWz0Is';
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const fileInput = document.getElementById('file-input');
-const fileInfo = document.getElementById('file-info');
-const musicList = document.getElementById('music-list');
-const audioPlayer = document.getElementById('audio-player');
+let currentAudio = new Audio();
 
-// 1. Deteksi Ukuran File Saat Pilih
-if (fileInput) {
-    fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-            fileInfo.innerText = `Ukuran file: ${sizeMB} MB`;
-        }
-    });
+// Inisialisasi Beranda
+if (document.getElementById('music-list')) {
+    loadSongs();
 }
 
-// 2. Fungsi Unggah
-async function uploadFile() {
-    const file = fileInput.files[0];
-    if (!file) return alert("Pilih file dulu!");
-
-    const progressBar = document.getElementById('progress-bar');
-    const container = document.getElementById('progress-container');
-    container.classList.remove('hidden');
-
-    const fileName = `${Date.now()}_${file.name}`;
-    
-    // Proses Upload ke Storage Supabase
-    const { data, error } = await supabase.storage
-        .from('musics') // Nama bucket di Supabase
-        .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: false
-        });
-
-    if (error) {
-        alert("Gagal upload: " + error.message);
-    } else {
-        // Simpan metadata ke tabel Database
-        const { error: dbError } = await supabase
-            .from('music_list')
-            .insert([{ 
-                name: file.name, 
-                url: fileName, 
-                size: (file.size / (1024 * 1024)).toFixed(2) + " MB" 
-            }]);
-        
-        alert("Berhasil diunggah!");
-        window.location.href = "index.html";
-    }
+// Format Ukuran File
+function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-// 3. Load Daftar Lagu di Beranda
+// Ambil Data Lagu
 async function loadSongs() {
-    if (!musicList) return;
+    const { data, error } = await supabase.from('songs').select('*');
+    if (error) return console.error(error);
 
-    const { data, error } = await supabase
-        .from('music_list')
-        .select('*');
+    const listContainer = document.getElementById('music-list');
+    listContainer.innerHTML = '';
 
-    if (error) return musicList.innerHTML = "Gagal memuat lagu.";
-    
-    musicList.innerHTML = "";
     data.forEach(song => {
-        const card = document.createElement('div');
-        card.className = 'music-card';
-        card.innerHTML = `
-            <div style="text-align: left;">
-                <strong style="color: #ff85a2;">${song.name}</strong><br>
-                <small>${song.size}</small>
+        listContainer.innerHTML += `
+            <div class="card">
+                <div onclick="playMusic('${song.url}', '${song.name}')" style="flex: 1; cursor: pointer;">
+                    <div style="font-weight: bold;">${song.name}</div>
+                    <div style="font-size: 12px; color: #aaa;">Ukuran: ${song.size}</div>
+                </div>
+                <button onclick="confirmDelete(${song.id}, '${song.storage_path}')" style="background:none; border:none; color:red; cursor:pointer;">Hapus</button>
             </div>
-            <button class="btn-main" onclick="playMusic('${song.url}', '${song.name}')">Putar</button>
         `;
-        musicList.appendChild(card);
     });
 }
 
-// 4. Fungsi Putar & Background Play
-function playMusic(fileName, name) {
-    const { data } = supabase.storage.from('musics').getPublicUrl(fileName);
-    const url = data.publicUrl;
-
-    document.getElementById('player-bar').classList.remove('hidden');
-    document.getElementById('now-playing').innerText = "Memutar: " + name;
+// Fitur Putar Musik (Background Play ready)
+function playMusic(url, title) {
+    currentAudio.src = url;
+    currentAudio.play();
+    document.getElementById('player-bar').style.display = 'block';
+    document.getElementById('current-title').innerText = `Memutar: ${title}`;
     
-    audioPlayer.src = url;
-    audioPlayer.play();
-
-    // Integrasi Media Session (Agar bisa dikontrol di Lock Screen / Background)
+    // Media Session API agar bisa dikontrol di lockscreen/notifikasi
     if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
-            title: name,
-            artist: 'Music Player',
-            album: 'LS Vatican Collection'
+            title: title,
+            artist: 'LS Vatican Player',
+            album: 'Music Player'
         });
     }
 }
 
-// Jalankan load lagu jika di index
-if (window.location.pathname.includes('index.html') || window.location.pathname === '/') {
-    loadSongs();
+currentAudio.ontimeupdate = () => {
+    const prog = (currentAudio.currentTime / currentAudio.duration) * 100;
+    document.getElementById('audio-progress').style.width = prog + '%';
+};
+
+// Fitur Unggah
+async function handleUpload() {
+    const fileInput = document.getElementById('file-input');
+    const file = fileInput.files[0];
+    if (!file) return alert('Pilih file dulu!');
+
+    const fileName = `${Date.now()}_${file.name}`;
+    const fileSize = formatBytes(file.size);
+
+    // Upload ke Storage
+    const { data, error } = await supabase.storage
+        .from('music-bucket')
+        .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false,
+        });
+
+    if (error) return alert('Gagal Upload Storage');
+
+    // Dapatkan Public URL
+    const { data: urlData } = supabase.storage.from('music-bucket').getPublicUrl(fileName);
+
+    // Simpan ke Database
+    const { error: dbError } = await supabase.from('songs').insert([
+        { name: file.name, size: fileSize, url: urlData.publicUrl, storage_path: fileName }
+    ]);
+
+    if (dbError) alert('Gagal Simpan Database');
+    else {
+        alert('Berhasil!');
+        window.location.href = 'index.html';
+    }
+}
+
+// Fitur Hapus dengan Kode Verifikasi
+async function confirmDelete(id, path) {
+    const randomCode = Math.floor(1000 + Math.random() * 9000);
+    const userInput = prompt(`Ketik kode berikut untuk menghapus: ${randomCode}`);
+
+    if (userInput == randomCode) {
+        // Hapus dari Storage
+        await supabase.storage.from('music-bucket').remove([path]);
+        // Hapus dari Table
+        await supabase.from('songs').delete().eq('id', id);
+        alert('Berhasil dihapus');
+        loadSongs();
+    } else {
+        alert('Kode salah!');
+    }
+}
+
+// Update info file saat dipilih di upload.html
+if (document.getElementById('file-input')) {
+    document.getElementById('file-input').onchange = function() {
+        const file = this.files[0];
+        if(file) document.getElementById('file-info').innerText = `Ukuran: ${formatBytes(file.size)}`;
+    };
 }
