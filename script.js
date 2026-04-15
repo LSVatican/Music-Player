@@ -1,5 +1,5 @@
 const SUPABASE_URL = 'https://tyipijrsdnbsowltcptl.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5aXBpanJzZG5ic293bHRjcHRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNTQ0MzgsImV4cCI6MjA5MTgzMDQzOH0.o2EhTzvkQYJIGzDOURfUKn5d9mqbhIK5Op_atJWz0Is';
+const SUPABASE_KEY = 'sb_publishable_3vXZOMGldH_os9xeq1bVwQ_mHNyLPMq';
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentAudio = new Audio();
