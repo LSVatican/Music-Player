@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unggah Musik - Music Player</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1 class="glow-text">Unggah Lagu</h1>
+            <p class="watermark">LS Vatican</p>
+        </header>
+
+        <div class="upload-box">
+            <input type="file" id="file-input" accept="audio/*">
+            <p id="file-info">Ukuran file: 0 MB</p>
+            
+            <div class="progress-container hidden" id="progress-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <p id="upload-status"></p>
+
+            <button onclick="uploadFile()" class="btn-main">Mulai Unggah</button>
+            <a href="index.html" class="btn-secondary">Kembali ke Beranda</a>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
